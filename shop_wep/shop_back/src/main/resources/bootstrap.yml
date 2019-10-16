@@ -3,4 +3,4 @@ spring:
     config:
       uri: http://localhost:20000
       name: application
-      profile: eureka,back,datasource,thymeleaf
+      profile: eureka,back,datasource,thymeleaf,fdfs,feign

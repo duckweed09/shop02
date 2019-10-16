@@ -4,6 +4,8 @@ import com.qf.dao.GoodsImageMapper;
 import com.qf.dao.GoodsMapper;
 import com.qf.entity.Goods;
 import com.qf.entity.GoodsImage;
+import com.qf.feign.ItemFeign;
+import com.qf.feign.SearchFeign;
 import com.qf.service.IGoodsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,12 @@ public class GoodsServiceImpl implements IGoodsService {
 
     @Autowired
     private GoodsImageMapper goodsImageMapper;
+
+    @Autowired
+    private SearchFeign searchFeign;
+
+    @Autowired
+    private ItemFeign itemFeign;
 
     @Override
     public List<Goods> queryAllGoods() {
@@ -36,10 +44,10 @@ public class GoodsServiceImpl implements IGoodsService {
 
         //封装一个封面的对象
         GoodsImage fengMian = new GoodsImage(
-           goods.getId(),
-           null,
-           goods.getFengmian(),
-           1
+                goods.getId(),
+                null,
+                goods.getFengmian(),
+                1
         );
 
         goodsImageMapper.insert(fengMian);
@@ -55,6 +63,15 @@ public class GoodsServiceImpl implements IGoodsService {
 
             goodsImageMapper.insert(otherImage);
         }
+
+        //调用搜索服务将最新的商品信息保存到solr索引库中
+        if(!searchFeign.insertSolr(goods)){
+            //索引库添加失败
+            throw new RuntimeException("索引库添加失败！");
+        }
+
+        //调用详情服务生成该商品的静态页面
+        itemFeign.createHtml(goods);
 
         return 1;
     }

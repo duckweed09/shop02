@@ -1,0 +1,5 @@
+server:
+  port: 8383
+spring:
+  application:
+    name: web-front

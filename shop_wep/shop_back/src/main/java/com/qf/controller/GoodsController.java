@@ -1,5 +1,7 @@
 package com.qf.controller;
 
+import com.github.tobato.fastdfs.domain.StorePath;
+import com.github.tobato.fastdfs.service.FastFileStorageClient;
 import com.qf.entity.Goods;
 import com.qf.feign.GoodsFeign;
 import org.apache.tomcat.util.http.fileupload.IOUtils;
@@ -13,7 +15,6 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.util.List;
-import java.util.UUID;
 
 @Controller
 @RequestMapping("/goodsManager")
@@ -21,6 +22,9 @@ public class GoodsController {
 
    @Autowired
     private GoodsFeign goodsFeign;
+
+   @Autowired
+   private FastFileStorageClient fastFileStorageClient;
 
     private String uploadPath = "D:\\imgs";
 
@@ -62,39 +66,53 @@ public class GoodsController {
     @ResponseBody
     public String imgUploader(MultipartFile file){
 
-//        System.out.println("上传的图片名称:" + file.getOriginalFilename());
-//        System.out.println("上传的图片大小:" + file.getSize());
 
-        //上传的位置到哪里?  D:\imgs
-        //上传的文件名叫什么？  保留原来的文件名  uuid
 
         File outfile = new File(uploadPath);
-        if(!outfile.exists()){
-            boolean mkdirs = outfile.mkdirs();
-            if(!mkdirs){
-                throw new RuntimeException("上传路径为空，并且无法创建！");
-            }
-        }
+//        if(!outfile.exists()){
+//            boolean mkdirs = outfile.mkdirs();
+//            if(!mkdirs){
+//                throw new RuntimeException("上传路径为空，并且无法创建！");
+//            }
+//        }
 
-        //处理文件名称
-        String filename = UUID.randomUUID().toString();
-        outfile = new File(outfile, filename);
+//        //处理文件名称
+//        String filename = UUID.randomUUID().toString();
+//        outfile = new File(outfile, filename);
 
-        //开始上传
-        try (
-                InputStream in = file.getInputStream();
-                OutputStream out = new FileOutputStream(outfile);
-        ) {
+        //开始上传（）fastdfs方式上传
+        String uploadPath=null;
+        try{
+            StorePath storePath = fastFileStorageClient.uploadImageAndCrtThumbImage(
+                    file.getInputStream(),
+                    file.getSize(),
+                    "JPG",
+                    null);
 
-            //文件的上传
-            IOUtils.copy(in,out);
-
-        } catch (IOException e) {
+            uploadPath = storePath.getFullPath();
+        }catch (IOException e){
             e.printStackTrace();
         }
 
 
-        return "{\"filename\":\"" + filename + "\"}";
+
+
+
+//        try (//原始上传方式
+//                InputStream in = file.getInputStream();
+//                OutputStream out = new FileOutputStream(outfile);
+//        ) {
+//            //文件的上传
+//            IOUtils.copy(in,out);
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+
+        uploadPath="http://192.168.150.66:8080/"+uploadPath;
+        System.out.println("上传路径"+uploadPath);
+
+        return "{\"filename\":\"" + uploadPath + "\"}";
     }
 
 
