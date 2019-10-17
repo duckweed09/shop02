@@ -7,6 +7,7 @@ import com.qf.entity.GoodsImage;
 import com.qf.feign.ItemFeign;
 import com.qf.feign.SearchFeign;
 import com.qf.service.IGoodsService;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,10 @@ public class GoodsServiceImpl implements IGoodsService {
 
     @Autowired
     private ItemFeign itemFeign;
+
+    //队列模板注入消息
+    @Autowired
+     private RabbitTemplate rabbitTemplate;
 
     @Override
     public List<Goods> queryAllGoods() {
@@ -64,14 +69,17 @@ public class GoodsServiceImpl implements IGoodsService {
             goodsImageMapper.insert(otherImage);
         }
 
-        //调用搜索服务将最新的商品信息保存到solr索引库中
-        if(!searchFeign.insertSolr(goods)){
-            //索引库添加失败
-            throw new RuntimeException("索引库添加失败！");
-        }
+//        //调用搜索服务将最新的商品信息保存到solr索引库中  feign同步调用
+//        if(!searchFeign.insertSolr(goods)){
+//            //索引库添加失败
+//            throw new RuntimeException("索引库添加失败！");
+//        }
+//
+//        //调用详情服务生成该商品的静态页面
+//        itemFeign.createHtml(goods);
 
-        //调用详情服务生成该商品的静态页面
-        itemFeign.createHtml(goods);
+        //rabbitmq异步调用，将goods对象发送到指定的交换机
+        rabbitTemplate.convertAndSend("goods_exchange","",goods);
 
         return 1;
     }
